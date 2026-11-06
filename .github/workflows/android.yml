@@ -41,15 +41,10 @@ jobs:
           PROJECT_DIR=$(dirname "$WRAPPER")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Inspect Android source
+      - name: Apply UWU v0.2 media library
         run: |
-          echo "===== PROJECT FILES ====="
-          find "$PROJECT_DIR" -type f | grep -E '[.](kt|java|xml|gradle|kts)$' | grep -v '/build/' | sort | tee /tmp/uwu-files.txt
-          echo "===== SOURCE CONTENTS ====="
-          while IFS= read -r file; do
-            echo "===== FILE: $file ====="
-            sed -n '1,500p' "$file"
-          done < /tmp/uwu-files.txt
+          cp "$GITHUB_WORKSPACE/uwu-overlay/MediaLibraryDialog.kt" "$PROJECT_DIR/app/src/main/java/com/uwu/dualstation/ui/MediaLibraryDialog.kt"
+          python3 "$GITHUB_WORKSPACE/uwu-overlay/patch.py" "$PROJECT_DIR"
 
       - name: Build APK
         run: |
@@ -60,6 +55,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: UWU-APK
+          name: UWU-APK-v0.2
           path: source/**/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
