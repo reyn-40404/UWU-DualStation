@@ -44,7 +44,7 @@ jobs:
       - name: Inspect Android source
         run: |
           echo "===== PROJECT FILES ====="
-          find "$PROJECT_DIR" -type f | grep -E '\\.(kt|java|xml|gradle|kts)$' | grep -v '/build/' | sort | tee /tmp/uwu-files.txt
+          find "$PROJECT_DIR" -type f | grep -E '[.](kt|java|xml|gradle|kts)$' | grep -v '/build/' | sort | tee /tmp/uwu-files.txt
           echo "===== SOURCE CONTENTS ====="
           while IFS= read -r file; do
             echo "===== FILE: $file ====="
