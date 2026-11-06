@@ -41,6 +41,16 @@ jobs:
           PROJECT_DIR=$(dirname "$WRAPPER")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
+      - name: Inspect Android source
+        run: |
+          echo "===== PROJECT FILES ====="
+          find "$PROJECT_DIR" -type f \\( -name '*.kt' -o -name '*.java' -o -name '*.xml' -o -name '*.gradle' -o -name '*.kts' -o -name 'AndroidManifest.xml' \\) -not -path '*/build/*' | sort
+          echo "===== SOURCE CONTENTS ====="
+          while IFS= read -r file; do
+            echo "===== FILE: $file ====="
+            sed -n '1,500p' "$file"
+          done < <(find "$PROJECT_DIR" -type f \\( -name '*.kt' -o -name '*.java' -o -name '*.xml' -o -name '*.gradle' -o -name '*.kts' \\) -not -path '*/build/*' | sort)
+
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
