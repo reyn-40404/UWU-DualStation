@@ -41,7 +41,7 @@ jobs:
           PROJECT_DIR=$(dirname "$WRAPPER")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Apply UWU v0.2 media library
+      - name: Apply UWU v0.3 thumbnails and storage
         run: |
           cp "$GITHUB_WORKSPACE/uwu-overlay/MediaLibraryDialog.kt" "$PROJECT_DIR/app/src/main/java/com/uwu/dualstation/ui/MediaLibraryDialog.kt"
           python3 "$GITHUB_WORKSPACE/uwu-overlay/patch.py" "$PROJECT_DIR"
@@ -55,6 +55,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: UWU-APK-v0.2
+          name: UWU-APK-v0.3
           path: source/**/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
