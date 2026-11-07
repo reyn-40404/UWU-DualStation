@@ -4,7 +4,9 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.GestureDetector
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
@@ -25,6 +27,8 @@ class LocalPlayerActivity : Activity() {
     private lateinit var libVlc: LibVLC
     private lateinit var player: MediaPlayer
     private lateinit var videoLayout: VLCVideoLayout
+    private lateinit var gestureLayer: View
+    private lateinit var controls: LinearLayout
     private lateinit var playButton: Button
     private lateinit var seekBar: SeekBar
     private lateinit var danmakuView: TextView
@@ -33,10 +37,15 @@ class LocalPlayerActivity : Activity() {
     private var dragging = false
     private var danmaku: List<Danmaku> = emptyList()
     private var speedIndex = 0
+    private var temporary2x = false
     private val speeds = floatArrayOf(1.0f, 1.25f, 1.5f, 2.0f)
     private val speedLabels = arrayOf("1.0×", "1.25×", "1.5×", "2.0×")
 
     private data class Danmaku(val timeMs: Long, val text: String)
+
+    private val hideControlsRunnable = Runnable {
+        if (::controls.isInitialized && !dragging) controls.visibility = View.GONE
+    }
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -72,6 +81,13 @@ class LocalPlayerActivity : Activity() {
         videoLayout = VLCVideoLayout(this)
         root.addView(videoLayout, FrameLayout.LayoutParams(-1, -1))
 
+        // Transparent gesture layer keeps video gestures separate from the controls.
+        gestureLayer = View(this).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            isClickable = true
+        }
+        root.addView(gestureLayer, FrameLayout.LayoutParams(-1, -1))
+
         danmakuView = TextView(this).apply {
             setTextColor(Color.WHITE)
             textSize = 22f
@@ -82,7 +98,7 @@ class LocalPlayerActivity : Activity() {
         }
         root.addView(danmakuView, FrameLayout.LayoutParams(-1, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL))
 
-        val controls = LinearLayout(this).apply {
+        controls = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(14, 8, 14, 12)
             setBackgroundColor(0x99000000.toInt())
@@ -91,13 +107,19 @@ class LocalPlayerActivity : Activity() {
         seekBar = SeekBar(this).apply {
             max = 1000
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onStartTrackingTouch(seekBar: SeekBar?) { dragging = true }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                    dragging = true
+                    handler.removeCallbacks(hideControlsRunnable)
+                }
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {
                     if (seekBar != null) player.time = seekBar.progress.toLong()
                     dragging = false
+                    scheduleControlsHide()
                 }
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    if (fromUser && seekBar != null) timeView.text = "${formatTime(progress.toLong())} / ${formatTime(player.length.coerceAtLeast(0L))}"
+                    if (fromUser && seekBar != null) {
+                        timeView.text = "${formatTime(progress.toLong())} / ${formatTime(player.length.coerceAtLeast(0L))}"
+                    }
                 }
             })
         }
@@ -107,7 +129,10 @@ class LocalPlayerActivity : Activity() {
         }
         playButton = Button(this).apply {
             text = "暫停"
-            setOnClickListener { if (player.isPlaying) player.pause() else player.play() }
+            setOnClickListener {
+                if (player.isPlaying) player.pause() else player.play()
+                showControls()
+            }
         }
         val speedButton = Button(this).apply {
             text = speedLabels[speedIndex]
@@ -115,6 +140,7 @@ class LocalPlayerActivity : Activity() {
                 speedIndex = (speedIndex + 1) % speeds.size
                 player.rate = speeds[speedIndex]
                 text = speedLabels[speedIndex]
+                showControls()
             }
         }
         val danmakuStatus = TextView(this).apply {
@@ -132,6 +158,39 @@ class LocalPlayerActivity : Activity() {
         root.addView(controls, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
         setContentView(root)
 
+        val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent): Boolean = true
+
+            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                toggleControls()
+                return true
+            }
+
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                if (player.isPlaying) player.pause() else player.play()
+                showControls()
+                return true
+            }
+
+            override fun onLongPress(e: MotionEvent) {
+                if (!temporary2x) {
+                    temporary2x = true
+                    player.rate = 2.0f
+                }
+            }
+        })
+
+        gestureLayer.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                if (temporary2x) {
+                    temporary2x = false
+                    player.rate = speeds[speedIndex]
+                }
+            }
+            true
+        }
+
         libVlc = LibVLC(this, arrayListOf("--no-drop-late-frames", "--no-skip-frames"))
         player = MediaPlayer(libVlc)
         player.attachViews(videoLayout, null, false, false)
@@ -140,6 +199,28 @@ class LocalPlayerActivity : Activity() {
         media.release()
         player.play()
         handler.post(ticker)
+        scheduleControlsHide()
+    }
+
+    private fun toggleControls() {
+        if (controls.visibility == View.VISIBLE) {
+            handler.removeCallbacks(hideControlsRunnable)
+            controls.visibility = View.GONE
+        } else {
+            showControls()
+        }
+    }
+
+    private fun showControls() {
+        controls.visibility = View.VISIBLE
+        scheduleControlsHide()
+    }
+
+    private fun scheduleControlsHide() {
+        handler.removeCallbacks(hideControlsRunnable)
+        if (::controls.isInitialized && controls.visibility == View.VISIBLE && !dragging) {
+            handler.postDelayed(hideControlsRunnable, 3000L)
+        }
     }
 
     private fun readDanmaku(uri: Uri): List<Danmaku> {
@@ -174,6 +255,7 @@ class LocalPlayerActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacks(ticker)
+        handler.removeCallbacks(hideControlsRunnable)
         if (::player.isInitialized) {
             player.stop()
             player.detachViews()
