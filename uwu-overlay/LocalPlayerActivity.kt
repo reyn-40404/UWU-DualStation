@@ -50,7 +50,7 @@ class LocalPlayerActivity : Activity() {
             timeView.text = "${formatTime(now)} / ${formatTime(duration)}"
             danmakuView.text = danmaku.asSequence()
                 .filter { kotlin.math.abs(it.timeMs - now) <= 1800L }
-                .takeLast(5)
+                .toList().takeLast(5)
                 .joinToString("\n") { it.text }
             playButton.text = if (player.isPlaying) "暫停" else "播放"
             handler.postDelayed(this, 100L)
