@@ -1,6 +1,5 @@
 package com.uwu.dualstation.ui
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
@@ -45,13 +44,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.documentfile.provider.DocumentFile
+import com.uwu.dualstation.LocalPlayerActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
-private data class LocalVideo(val name: String, val uri: Uri, val size: Long, val modified: Long)
+private data class LocalVideo(val name: String, val uri: Uri, val size: Long, val modified: Long, val danmakuUri: Uri?)
 private data class FolderStats(val bytes: Long = 0L, val files: Int = 0)
 
 @Composable
@@ -119,7 +119,7 @@ fun MediaLibraryDialog(onDismiss: () -> Unit) {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     item {
                         FolderSection("YouTube 資料夾", youtubeUri, youtubeVideos, youtubeStats, { youtubePicker.launch(null) }) {
-                            playVideo(context, it.uri)
+                            playVideo(context, it.uri, it.danmakuUri)
                         }
                     }
                     item {
@@ -230,6 +230,7 @@ private fun scanFolder(context: android.content.Context, rawUri: String?): Pair<
     while (queue.isNotEmpty() && fileCount < 5000) {
         val (folder, depth) = queue.removeFirst()
         val children = try { folder.listFiles() } catch (_: Exception) { emptyArray() }
+        val xmlFiles = children.filter { it.isFile && it.name.orEmpty().lowercase(Locale.ROOT).endsWith(".xml") }
         for (child in children) {
             if (child.isDirectory && depth < 8) {
                 queue.add(child to depth + 1)
@@ -238,7 +239,11 @@ private fun scanFolder(context: android.content.Context, rawUri: String?): Pair<
                 totalBytes += size
                 fileCount++
                 if (found.size < 1000 && isVideo(child)) {
-                    found.add(LocalVideo(child.name ?: "未命名影片", child.uri, size, child.lastModified()))
+                    val baseName = child.name.orEmpty().substringBeforeLast(".", child.name.orEmpty())
+                    val matchedXml = xmlFiles.firstOrNull {
+                        it.name.orEmpty().substringBeforeLast(".", it.name.orEmpty()).equals(baseName, ignoreCase = true)
+                    } ?: xmlFiles.singleOrNull()
+                    found.add(LocalVideo(child.name ?: "未命名影片", child.uri, size, child.lastModified(), matchedXml?.uri))
                 }
             }
             if (fileCount >= 5000) break
@@ -253,15 +258,14 @@ private fun isVideo(file: DocumentFile): Boolean {
     return listOf(".mp4", ".mkv", ".webm", ".mov", ".avi", ".flv", ".m4v", ".ts", ".3gp").any(name::endsWith)
 }
 
-private fun playVideo(context: android.content.Context, uri: Uri) {
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, "video/*")
+private fun playVideo(context: android.content.Context, uri: Uri, danmakuUri: Uri?) {
+    val intent = Intent(context, LocalPlayerActivity::class.java).apply {
+        putExtra(LocalPlayerActivity.EXTRA_VIDEO_URI, uri.toString())
+        danmakuUri?.let { putExtra(LocalPlayerActivity.EXTRA_DANMAKU_URI, it.toString()) }
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     try {
         context.startActivity(intent)
-    } catch (_: ActivityNotFoundException) {
-        Toast.makeText(context, "手機沒有可播放影片的 App", Toast.LENGTH_LONG).show()
     } catch (_: Exception) {
         Toast.makeText(context, "無法開啟這個影片檔案", Toast.LENGTH_LONG).show()
     }
