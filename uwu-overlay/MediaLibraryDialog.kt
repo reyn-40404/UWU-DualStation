@@ -124,7 +124,7 @@ fun MediaLibraryDialog(onDismiss: () -> Unit) {
                     }
                     item {
                         FolderSection("Bilibili 資料夾", bilibiliUri, bilibiliVideos, bilibiliStats, { bilibiliPicker.launch(null) }) {
-                            playVideo(context, it.uri)
+                            playVideo(context, it.uri, it.danmakuUri)
                         }
                     }
                     item {
