@@ -57,8 +57,8 @@ if "org.videolan.android:libvlc-all" not in g:
         '    implementation("androidx.core:core-ktx:1.15.0")',
         '    implementation("androidx.core:core-ktx:1.15.0")\n    implementation("org.videolan.android:libvlc-all:3.6.0")'
     )
-g = re.sub(r'versionCode\s*=\s*\\d+', 'versionCode = 4', g)
-g = re.sub(r'versionName\s*=\s*"[^"]+"', 'versionName = "0.4.0"', g)
+g = re.sub(r'versionCode\s*=\s*\\d+', 'versionCode = 5', g)
+g = re.sub(r'versionName\s*=\s*"[^"]+"', 'versionName = "0.5.0"', g)
 gradle.write_text(g, encoding="utf-8")
 
 # Register the in-app VLC activity.
