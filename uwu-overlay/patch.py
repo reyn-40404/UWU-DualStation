@@ -9,8 +9,8 @@ home = root / "app/src/main/java/com/uwu/dualstation/ui/HomeScreen.kt"
 s = home.read_text(encoding="utf-8")
 if "MediaLibraryDialog" not in s:
     s = s.replace(
-        '    var showConfig by remember { mutableStateOf(false) }\\n',
-        '    var showConfig by remember { mutableStateOf(false) }\\n    var showMediaLibrary by remember { mutableStateOf(false) }\\n'
+        '    var showConfig by remember { mutableStateOf(false) }\n',
+        '    var showConfig by remember { mutableStateOf(false) }\n    var showMediaLibrary by remember { mutableStateOf(false) }\n'
     )
     old = '''                ComingSoonTile(
                     title = "下載中心",
@@ -49,16 +49,16 @@ gradle = root / "app/build.gradle.kts"
 g = gradle.read_text(encoding="utf-8")
 if "androidx.documentfile:documentfile" not in g:
     g = g.replace(
-        '    implementation("androidx.core:core-ktx:1.15.0")\\n',
-        '    implementation("androidx.core:core-ktx:1.15.0")\\n    implementation("androidx.documentfile:documentfile:1.0.1")\\n'
+        '    implementation("androidx.core:core-ktx:1.15.0")\n',
+        '    implementation("androidx.core:core-ktx:1.15.0")\n    implementation("androidx.documentfile:documentfile:1.0.1")\n'
     )
 if "org.videolan.android:libvlc-all" not in g:
     g = g.replace(
         '    implementation("androidx.core:core-ktx:1.15.0")',
-        '    implementation("androidx.core:core-ktx:1.15.0")\\n    implementation("org.videolan.android:libvlc-all:3.6.0")'
+        '    implementation("androidx.core:core-ktx:1.15.0")\n    implementation("org.videolan.android:libvlc-all:3.6.0")'
     )
-g = re.sub(r'versionCode\\s*=\\s*\\d+', 'versionCode = 4', g)
-g = re.sub(r'versionName\\s*=\\s*"[^"]+"', 'versionName = "0.4.0"', g)
+g = re.sub(r'versionCode\s*=\s*\\d+', 'versionCode = 4', g)
+g = re.sub(r'versionName\s*=\s*"[^"]+"', 'versionName = "0.4.0"', g)
 gradle.write_text(g, encoding="utf-8")
 
 # Register the in-app VLC activity.
